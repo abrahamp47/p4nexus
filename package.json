@@ -1,5 +1,5 @@
 {
-  "name": "gitnexus-monorepo",
+  "name": "p4nexus-monorepo",
   "private": true,
   "scripts": {
     "prepare": "husky",
@@ -7,8 +7,8 @@
     "format:check": "prettier --check .",
     "lint": "eslint .",
     "lint:fix": "eslint --fix .",
-    "gitnexus:refresh": "gitnexus analyze --embeddings --skills",
-    "gitnexus:full": "gitnexus analyze --force --embeddings --skills"
+    "p4nexus:refresh": "p4nexus analyze --embeddings --skills",
+    "p4nexus:full": "p4nexus analyze --force --embeddings --skills"
   },
   "devDependencies": {
     "@typescript-eslint/eslint-plugin": "^8.57.2",

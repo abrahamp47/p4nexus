@@ -1,18 +1,18 @@
 {
-  "name": "gitnexus-marketplace",
+  "name": "p4nexus-marketplace",
   "owner": {
-    "name": "GitNexus",
-    "email": "nico@gitnexus.dev"
+    "name": "P4Nexus",
+    "email": "nico@p4nexus.dev"
   },
   "metadata": {
     "description": "Code intelligence powered by a knowledge graph — execution flows, blast radius, and semantic search",
-    "homepage": "https://github.com/nicosxt/gitnexus"
+    "homepage": "https://github.com/nicosxt/p4nexus"
   },
   "plugins": [
     {
-      "name": "gitnexus",
+      "name": "p4nexus",
       "version": "1.3.3",
-      "source": "./gitnexus-claude-plugin",
+      "source": "./p4nexus-claude-plugin",
       "description": "Code intelligence powered by a knowledge graph. Provides execution flow tracing, blast radius analysis, and augmented search across your codebase."
     }
   ]

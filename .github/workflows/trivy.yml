@@ -31,8 +31,8 @@ jobs:
       fail-fast: false
       matrix:
         image:
-          - { dockerfile: Dockerfile.cli, name: gitnexus-cli }
-          - { dockerfile: Dockerfile.web, name: gitnexus-web }
+          - { dockerfile: Dockerfile.cli, name: p4nexus-cli }
+          - { dockerfile: Dockerfile.web, name: p4nexus-web }
 
     steps:
       - name: Checkout

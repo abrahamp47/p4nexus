@@ -1,28 +1,28 @@
-# Architecture — GitNexus
+# Architecture — P4Nexus
 
-Monorepo: **CLI/MCP** (`gitnexus/`) + **browser UI** (`gitnexus-web/`).
+Monorepo: **CLI/MCP** (`p4nexus/`) + **browser UI** (`p4nexus-web/`).
 
 ## Repository layout
 
 | Path | Role |
 |------|------|
-| `gitnexus/` | npm package `gitnexus`: CLI, MCP server (stdio), HTTP API, ingestion pipeline, LadybugDB graph, embeddings. |
-| `gitnexus-web/` | Vite + React thin client: graph explorer + AI chat. All queries via `gitnexus serve` HTTP API. |
-| `gitnexus-shared/` | Shared TypeScript types and constants (consumed by CLI and Web). |
-| `.claude/`, `gitnexus-claude-plugin/`, `gitnexus-cursor-integration/` | Agent skills and plugin metadata. |
+| `p4nexus/` | npm package `p4nexus`: CLI, MCP server (stdio), HTTP API, ingestion pipeline, LadybugDB graph, embeddings. |
+| `p4nexus-web/` | Vite + React thin client: graph explorer + AI chat. All queries via `p4nexus serve` HTTP API. |
+| `p4nexus-shared/` | Shared TypeScript types and constants (consumed by CLI and Web). |
+| `.claude/`, `p4nexus-claude-plugin/`, `p4nexus-cursor-integration/` | Agent skills and plugin metadata. |
 | `eval/` | Evaluation harnesses for benchmarking tool usage. |
-| `.github/` | CI workflows + composite actions (`setup-gitnexus/`, `setup-gitnexus-web/`). |
+| `.github/` | CI workflows + composite actions (`setup-p4nexus/`, `setup-p4nexus-web/`). |
 
 ## End-to-end flow: index → graph → tools
 
-1. **Ingestion** — `analyze.ts` → `runFullAnalysis` (`run-analyze.ts`) → `runPipelineFromRepo` (`pipeline.ts`). DAG of 12 phases builds a `KnowledgeGraph` in memory, then loads into LadybugDB under `.gitnexus/`. Repo registered in `~/.gitnexus/registry.json` for MCP discovery.
+1. **Ingestion** — `analyze.ts` → `runFullAnalysis` (`run-analyze.ts`) → `runPipelineFromRepo` (`pipeline.ts`). DAG of 12 phases builds a `KnowledgeGraph` in memory, then loads into LadybugDB under `.p4nexus/`. Repo registered in `~/.p4nexus/registry.json` for MCP discovery.
 
 2. **Persistence** — `repo-manager.ts` (paths, registry, KuzuDB cleanup). `lbug-adapter.ts` (graph load, queries, embedding batches).
 
 3. **Query layer** — three interfaces to the same backend:
    - **MCP (stdio):** `mcp.ts` → `LocalBackend` → tools (`tools.ts`) + resources (`resources.ts`)
    - **HTTP bridge:** `serve.ts` → Express (`api.ts`, `mcp-http.ts`) for web UI
-   - **CLI direct:** `gitnexus query|context|impact|cypher` in `tool.ts`
+   - **CLI direct:** `p4nexus query|context|impact|cypher` in `tool.ts`
 
 4. **Staleness** — `staleness.ts` compares indexed `lastCommit` to `HEAD`, surfaces hints.
 
@@ -44,12 +44,12 @@ Monorepo: **CLI/MCP** (`gitnexus/`) + **browser UI** (`gitnexus-web/`).
 | `group_list` | List repo groups or details for one group |
 | `group_sync` | Rebuild group Contract Registry (`contracts.json`) and bridge graph |
 
-`query`, `context`, and `impact` are group-aware: pass `repo: "@<groupName>"` (or `"@<groupName>/<memberPath>"` to scope to one member) plus optional `service: "<monorepo/path>"`. Group-mode `query` merges per-repo results via Reciprocal Rank Fusion; group-mode `impact` runs the local walk in the chosen member and fans out across boundaries via the Contract Bridge (`gitnexus/src/core/group/cross-impact.ts`). The previously-planned `group_query`, `group_context`, `group_impact`, `group_contracts`, `group_status` MCP tools are intentionally not introduced — group-level state is exposed via resources instead:
+`query`, `context`, and `impact` are group-aware: pass `repo: "@<groupName>"` (or `"@<groupName>/<memberPath>"` to scope to one member) plus optional `service: "<monorepo/path>"`. Group-mode `query` merges per-repo results via Reciprocal Rank Fusion; group-mode `impact` runs the local walk in the chosen member and fans out across boundaries via the Contract Bridge (`p4nexus/src/core/group/cross-impact.ts`). The previously-planned `group_query`, `group_context`, `group_impact`, `group_contracts`, `group_status` MCP tools are intentionally not introduced — group-level state is exposed via resources instead:
 
 | Resource URI | Purpose |
 |--------------|---------|
-| `gitnexus://group/{name}/contracts` | Contract Registry (provider/consumer rows + cross-links) |
-| `gitnexus://group/{name}/status` | Per-member index + Contract Registry staleness |
+| `p4nexus://group/{name}/contracts` | Contract Registry (provider/consumer rows + cross-links) |
+| `p4nexus://group/{name}/status` | Per-member index + Contract Registry staleness |
 
 ## Where to change what
 
@@ -63,21 +63,21 @@ Monorepo: **CLI/MCP** (`gitnexus/`) + **browser UI** (`gitnexus-web/`).
 | Search ranking | `src/core/search/` (BM25, hybrid fusion) |
 | Embeddings | `src/core/embeddings/` + `src/core/run-analyze.ts` |
 | Wiki generation | `src/core/wiki/` |
-| Language support | `src/core/ingestion/languages/` + `tree-sitter-queries.ts` + `gitnexus-shared/src/languages.ts` |
+| Language support | `src/core/ingestion/languages/` + `tree-sitter-queries.ts` + `p4nexus-shared/src/languages.ts` |
 | Import resolution | `src/core/ingestion/import-processor.ts` + `import-resolvers/configs/` + `model/resolution-context.ts` |
 | Call resolution/MRO | `src/core/ingestion/call-processor.ts` + `model/resolve.ts` |
 | Type extraction | `src/core/ingestion/type-extractors/` |
 | Worker pool | `src/core/ingestion/workers/` |
-| Web UI | `gitnexus-web/src/` |
+| Web UI | `p4nexus-web/src/` |
 | CI | `.github/workflows/*.yml`, `.github/actions/` |
 
-> Paths above are relative to `gitnexus/` unless they start with `gitnexus-web/` or `.github/`.
+> Paths above are relative to `p4nexus/` unless they start with `p4nexus-web/` or `.github/`.
 
 ---
 
 ## Pipeline Phase DAG
 
-12 phases defined in `gitnexus/src/core/ingestion/pipeline-phases/`, each with explicit `deps` and typed output.
+12 phases defined in `p4nexus/src/core/ingestion/pipeline-phases/`, each with explicit `deps` and typed output.
 
 ```
 scan → structure → [markdown, cobol] → parse → [routes, tools, orm]
@@ -233,9 +233,9 @@ The CI parity workflow (`.github/workflows/ci-scope-parity.yml`) runs both paths
 
 Two independent invariants.
 
-**ParsedFile = the AST-level truth.** `ParsedFile` (`gitnexus-shared/src/scope-resolution/parsed-file.ts`) is the single per-file artifact both resolution paths consume. Scope-resolution passes MUST NOT build a parallel parse representation. If a per-language hook needs AST-level facts that `ParsedFile` doesn't expose, it should reuse the orchestrator's `treeCache` (`RunScopeResolutionInput.treeCache`) rather than re-invoking `parser.parse(...)` on its own — the C# `populateNamespaceSiblings` hook is the reference implementation of this pattern.
+**ParsedFile = the AST-level truth.** `ParsedFile` (`p4nexus-shared/src/scope-resolution/parsed-file.ts`) is the single per-file artifact both resolution paths consume. Scope-resolution passes MUST NOT build a parallel parse representation. If a per-language hook needs AST-level facts that `ParsedFile` doesn't expose, it should reuse the orchestrator's `treeCache` (`RunScopeResolutionInput.treeCache`) rather than re-invoking `parser.parse(...)` on its own — the C# `populateNamespaceSiblings` hook is the reference implementation of this pattern.
 
-**SemanticModel = the symbol-level truth.** `SemanticModel` (`gitnexus/src/core/ingestion/model/semantic-model.ts`) is the authoritative store for every symbol-indexed lookup (by `nodeId`, `simpleName`, `qualifiedName`, or `filePath`). Both paths read from here:
+**SemanticModel = the symbol-level truth.** `SemanticModel` (`p4nexus/src/core/ingestion/model/semantic-model.ts`) is the authoritative store for every symbol-indexed lookup (by `nodeId`, `simpleName`, `qualifiedName`, or `filePath`). Both paths read from here:
 
 - Legacy Call-Resolution DAG → `call-processor` Tier 1/2/3 via `model.symbols.lookupExactAll`, `model.methods.lookupMethodByName`, `model.types.lookupClassByName`, `lookupMethodByOwnerWithMRO`.
 - Scope-resolution pipeline → `findOwnedMember`, `pickOverload`, `findExportedDefByName` all consult `model.methods` / `model.fields` / `model.symbols`.
@@ -442,13 +442,13 @@ CLI (analyze.ts) → runFullAnalysis(repoPath, options, callbacks)
 ## Storage
 
 ```
-<repo>/.gitnexus/
+<repo>/.p4nexus/
   ├── lbug           # LadybugDB database
   ├── lbug.wal       # Write-ahead log
   ├── lbug.lock      # Single-writer lock
   └── meta.json      # lastCommit, indexedAt, stats
 
-~/.gitnexus/
+~/.p4nexus/
   └── registry.json  # Global repo registry (MCP discovery)
 ```
 

@@ -143,22 +143,22 @@ jobs:
           # the zizmor cache-poisoning audit. See cache-poisoning audit.
           package-manager-cache: false
 
-      - name: Build gitnexus-shared
+      - name: Build p4nexus-shared
         run: npm install && npm run build
-        working-directory: gitnexus-shared
+        working-directory: p4nexus-shared
 
-      - name: Install gitnexus dependencies
+      - name: Install p4nexus dependencies
         run: npm ci
-        working-directory: gitnexus
+        working-directory: p4nexus
 
       - name: Resolve rc version
         id: version
         shell: bash
-        working-directory: gitnexus
+        working-directory: p4nexus
         env:
           BUMP_INPUT: ${{ inputs.bump }}
           EVENT_NAME: ${{ github.event_name }}
-          PKG_NAME: gitnexus
+          PKG_NAME: p4nexus
         run: |
           set -euo pipefail
 
@@ -286,19 +286,19 @@ jobs:
 
       - name: Apply rc version in-CI
         shell: bash
-        working-directory: gitnexus
+        working-directory: p4nexus
         run: |
           set -euo pipefail
           npm version "${{ steps.version.outputs.rc_version }}" \
             --no-git-tag-version --allow-same-version
 
-      - name: Build gitnexus
+      - name: Build p4nexus
         run: npm run build
-        working-directory: gitnexus
+        working-directory: p4nexus
 
       - name: Dry-run publish
         run: npm publish --dry-run --tag rc
-        working-directory: gitnexus
+        working-directory: p4nexus
 
       # ── Acquire the "rc lock" BEFORE publishing (fixes idempotency) ─────
       # We create two tags and push them atomically:
@@ -312,7 +312,7 @@ jobs:
       - name: Create and push rc tags
         id: reltag
         shell: bash
-        working-directory: gitnexus
+        working-directory: p4nexus
         env:
           RC_VERSION: ${{ steps.version.outputs.rc_version }}
           HEAD_SHA: ${{ needs.guard.outputs.head_sha }}
@@ -346,7 +346,7 @@ jobs:
 
       - name: Publish to npm (rc dist-tag)
         run: npm publish --provenance --access public --tag rc
-        working-directory: gitnexus
+        working-directory: p4nexus
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
@@ -361,7 +361,7 @@ jobs:
           body: |
             Automated release candidate build from `main`.
 
-            **npm:** `npm install gitnexus@rc`
+            **npm:** `npm install p4nexus@rc`
             **Version:** `${{ steps.version.outputs.rc_version }}`
             **Target base:** `${{ steps.version.outputs.base }}` (rc #${{ steps.version.outputs.rc_n }})
             **Source commit (main):** ${{ needs.guard.outputs.head_sha }}

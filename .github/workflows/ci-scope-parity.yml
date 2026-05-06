@@ -6,7 +6,7 @@ name: Scope Resolution Parity
 #
 # ── Purpose (RFC #909 Ring 3, §6.4 "Observability gates") ──────────────
 # For every language in `MIGRATED_LANGUAGES` (exported from
-# `gitnexus/src/core/ingestion/registry-primary-flag.ts`), run the
+# `p4nexus/src/core/ingestion/registry-primary-flag.ts`), run the
 # resolver integration test at `test/integration/resolvers/<slug>.test.ts`
 # TWICE on every PR:
 #
@@ -38,12 +38,12 @@ jobs:
       has-any: ${{ steps.read.outputs.has-any }}
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-      - uses: ./.github/actions/setup-gitnexus
+      - uses: ./.github/actions/setup-p4nexus
 
       - name: Extract MIGRATED_LANGUAGES from registry-primary-flag.ts
         id: read
         shell: bash
-        working-directory: gitnexus
+        working-directory: p4nexus
         run: |
           set -euo pipefail
           # `tsx` evaluates the TS source directly (no build step), imports
@@ -72,13 +72,13 @@ jobs:
         lang: ${{ fromJSON(needs.discover.outputs.languages) }}
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-      - uses: ./.github/actions/setup-gitnexus
+      - uses: ./.github/actions/setup-p4nexus
         with:
           build: 'true'
 
       - name: Verify resolver test file exists
         shell: bash
-        working-directory: gitnexus
+        working-directory: p4nexus
         run: |
           set -euo pipefail
           TEST_FILE="test/integration/resolvers/${{ matrix.lang.slug }}.test.ts"
@@ -92,7 +92,7 @@ jobs:
 
       - name: Resolver tests — legacy DAG (REGISTRY_PRIMARY_${{ matrix.lang.envvar }}=0)
         shell: bash
-        working-directory: gitnexus
+        working-directory: p4nexus
         env:
           FLAG_NAME: REGISTRY_PRIMARY_${{ matrix.lang.envvar }}
         # Explicitly force the flag to `0` even though it also defaults to
@@ -104,7 +104,7 @@ jobs:
 
       - name: Resolver tests — registry-primary (REGISTRY_PRIMARY_${{ matrix.lang.envvar }}=1)
         shell: bash
-        working-directory: gitnexus
+        working-directory: p4nexus
         env:
           FLAG_NAME: REGISTRY_PRIMARY_${{ matrix.lang.envvar }}
         run: env "$FLAG_NAME=1" npx vitest run "test/integration/resolvers/${{ matrix.lang.slug }}.test.ts"

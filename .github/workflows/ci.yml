@@ -24,11 +24,11 @@ concurrency:
 # Each concern lives in its own workflow file for maintainability:
 #   ci-quality.yml       — typecheck (tsc --noEmit)
 #   ci-tests.yml         — unit + integration tests with coverage + cross-platform
-#   ci-e2e.yml           — E2E tests (only when gitnexus-web/ changes)
+#   ci-e2e.yml           — E2E tests (only when p4nexus-web/ changes)
 #   ci-scope-parity.yml  — RFC #909 Ring 3 parity gate: legacy DAG + registry-primary
 #                          both pass, per migrated language in the JSON registry
 #
-# Shared setup is DRY via .github/actions/setup-gitnexus composite action.
+# Shared setup is DRY via .github/actions/setup-p4nexus composite action.
 
 jobs:
   quality:

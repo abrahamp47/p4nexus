@@ -43,12 +43,12 @@ jobs:
           # opt-out is required to clear the zizmor cache-poisoning audit.
           # ~30s slower per release; runs rarely.
           package-manager-cache: false
-      - name: Build gitnexus-shared
+      - name: Build p4nexus-shared
         run: npm install && npm run build
-        working-directory: gitnexus-shared
+        working-directory: p4nexus-shared
 
       - run: npm ci
-        working-directory: gitnexus
+        working-directory: p4nexus
 
       - name: Verify version consistency
         shell: bash
@@ -64,19 +64,19 @@ jobs:
             exit 1
           fi
           echo "Version verified: $PKG_VERSION"
-        working-directory: gitnexus
+        working-directory: p4nexus
 
       - name: Build
         run: npm run build
-        working-directory: gitnexus
+        working-directory: p4nexus
 
       - name: Dry-run publish
         run: npm publish --dry-run
-        working-directory: gitnexus
+        working-directory: p4nexus
 
       - name: Publish to npm
         run: npm publish --provenance --access public
-        working-directory: gitnexus
+        working-directory: p4nexus
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
@@ -85,7 +85,7 @@ jobs:
         shell: bash
         run: |
           VERSION="${GITHUB_REF#refs/tags/v}"
-          NOTES=$(awk "/^## \\[$VERSION\\]/{found=1; next} /^## \\[/{if(found) exit} found" gitnexus/CHANGELOG.md)
+          NOTES=$(awk "/^## \\[$VERSION\\]/{found=1; next} /^## \\[/{if(found) exit} found" p4nexus/CHANGELOG.md)
           if [ -z "$NOTES" ]; then
             echo "::warning::No CHANGELOG entry found for v$VERSION, falling back to auto-generated notes"
             echo "fallback=true" >> "$GITHUB_OUTPUT"

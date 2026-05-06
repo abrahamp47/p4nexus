@@ -1,0 +1,18 @@
+{
+  "name": "tree-sitter-dart",
+  "version": "1.0.0",
+  "description": "Dart grammar attempt for tree-sitter",
+  "repository": "https://github.com/UserNobody14/tree-sitter-dart",
+  "license": "ISC",
+  "main": "bindings/node",
+  "types": "bindings/node",
+  "_vendoredBy": "p4nexus - pinned to UserNobody14/tree-sitter-dart commit 80e23c07b64494f7e21090bb3450223ef0b192f4. Build deps are hoisted into p4nexus/package.json optionalDependencies, and native compilation is performed by p4nexus/scripts/build-tree-sitter-dart.cjs at p4nexus postinstall.",
+  "peerDependencies": {
+    "tree-sitter": "^0.21.0"
+  },
+  "peerDependenciesMeta": {
+    "tree_sitter": {
+      "optional": true
+    }
+  }
+}

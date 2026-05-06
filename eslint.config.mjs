@@ -11,12 +11,12 @@ export default [
       '**/dist/**',
       '**/node_modules/**',
       '**/coverage/**',
-      'gitnexus/vendor/**',
-      'gitnexus-web/src/vendor/**',
-      'gitnexus/test/fixtures/**',
-      'gitnexus-web/test/fixtures/**',
-      'gitnexus-web/playwright-report/**',
-      'gitnexus-web/test-results/**',
+      'p4nexus/vendor/**',
+      'p4nexus-web/src/vendor/**',
+      'p4nexus/test/fixtures/**',
+      'p4nexus-web/test/fixtures/**',
+      'p4nexus-web/playwright-report/**',
+      'p4nexus-web/test-results/**',
       '**/*.d.ts',
       '.claude/**',
       '.history/**',
@@ -61,15 +61,15 @@ export default [
 
   // CLI package — allow console.log (it's a CLI tool)
   {
-    files: ['gitnexus/src/cli/**/*.ts', 'gitnexus/src/server/**/*.ts'],
+    files: ['p4nexus/src/cli/**/*.ts', 'p4nexus/src/server/**/*.ts'],
     rules: {
       'no-console': 'off',
     },
   },
 
-  // React-specific rules for gitnexus-web
+  // React-specific rules for p4nexus-web
   {
-    files: ['gitnexus-web/src/**/*.{ts,tsx}'],
+    files: ['p4nexus-web/src/**/*.{ts,tsx}'],
     plugins: {
       'react-hooks': reactHooks,
     },
