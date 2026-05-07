@@ -6,5 +6,5 @@
   "tabWidth": 2,
   "endOfLine": "lf",
   "plugins": ["prettier-plugin-tailwindcss"],
-  "tailwindStylesheet": "./gitnexus-web/src/index.css"
+  "tailwindStylesheet": "./p4nexus-web/src/index.css"
 }

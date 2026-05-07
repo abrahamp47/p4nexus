@@ -73,4 +73,63 @@ describe('Perforce workspace detection', () => {
     const { getGitRoot } = await import('../../src/storage/git.js');
     expect(getGitRoot('C:\\outside')).toBeNull();
   });
+
+  it('returns git root when client is known and path is mapped', async () => {
+    mockedExecFileSync.mockImplementation((cmd, args) => {
+      const argv = args as string[];
+      if (cmd === 'p4' && argv[0] === '-ztag' && argv[1] === 'info') {
+        return taggedInfo({
+          clientName: 'mdm_develop',
+          clientRoot: 'C:\\p4',
+        });
+      }
+      if (cmd === 'p4' && argv[0] === 'where') {
+        return '//prod_depot/10.5.0/maintHF3/... //mdm_develop/prod_depot/10.5.0/maintHF3/... C:\\p4\\prod_depot\\10.5.0\\maintHF3\\...';
+      }
+      return '';
+    });
+
+    const { getGitRoot } = await import('../../src/storage/git.js');
+    expect(getGitRoot('C:\\p4\\prod_depot\\10.5.0\\maintHF3')).toBe('C:\\p4');
+  });
+
+  it('treats unknown client as not a workspace', async () => {
+    mockedExecFileSync.mockImplementation((cmd, args) => {
+      const argv = args as string[];
+      if (cmd === 'p4' && argv[0] === '-ztag' && argv[1] === 'info') {
+        return taggedInfo({
+          clientName: '*unknown*',
+          clientRoot: 'C:\\p4',
+        });
+      }
+      return '';
+    });
+
+    const { isGitRepo, hasGitDir, getGitRoot } = await import('../../src/storage/git.js');
+    const target = 'C:\\p4\\prod_depot\\10.5.0\\maintHF3';
+    expect(isGitRepo(target)).toBe(false);
+    expect(hasGitDir(target)).toBe(false);
+    expect(getGitRoot(target)).toBeNull();
+  });
+
+  it('treats p4 where command failure as not mapped', async () => {
+    mockedExecFileSync.mockImplementation((cmd, args) => {
+      const argv = args as string[];
+      if (cmd === 'p4' && argv[0] === '-ztag' && argv[1] === 'info') {
+        return taggedInfo({
+          clientName: 'mdm_develop',
+          clientRoot: 'C:\\p4',
+        });
+      }
+      if (cmd === 'p4' && argv[0] === 'where') {
+        throw new Error('where failed');
+      }
+      return '';
+    });
+
+    const { hasGitDir, getGitRoot } = await import('../../src/storage/git.js');
+    const target = 'C:\\p4\\prod_depot\\10.5.0\\maintHF3';
+    expect(hasGitDir(target)).toBe(false);
+    expect(getGitRoot(target)).toBeNull();
+  });
 });
