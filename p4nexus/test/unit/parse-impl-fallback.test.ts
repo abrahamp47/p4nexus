@@ -26,9 +26,8 @@ const spies = {
 
 // Controls which dependency throws for a given test.
 // `readFileContentsFailAfter`: call count threshold — fail once the N-th call
-// is reached. The first `readFileContents` call happens in the outer
-// worker/parse loop (before sequential fallback); we want to fail only on the
-// second call (inside the fallback) so the U6 try/finally is exercised.
+// is reached. parse-impl now reuses in-memory sequential chunks in fallback,
+// so there is only one read pass in sequential mode.
 const failureConfig: {
   readFileContentsFailAfter: number;
   readFileContentsCalls: number;
@@ -152,14 +151,16 @@ describe('parse-impl sequential fallback cleanup (U6)', () => {
         { scope: '', varName: 'x', typeName: 'number' },
       ]),
     ).toThrow();
+    // Regression guard for sequential chunk reuse optimization: no second
+    // disk-read pass during fallback.
+    expect(failureConfig.readFileContentsCalls).toBe(1);
   });
 
-  it('error path: readFileContents throws mid-fallback — astCache is cleared and finalize runs', async () => {
+  it('error path: readFileContents throws during initial pass — astCache is cleared and finalize runs', async () => {
     const graph = createKnowledgeGraph();
     const files = ['a.ts', 'b.ts'];
-    // Fail the second readFileContents call — first call is in the outer
-    // worker/parse loop, second is inside the sequential fallback.
-    failureConfig.readFileContentsFailAfter = 2;
+    // Sequential mode now uses one disk-read pass; fail immediately.
+    failureConfig.readFileContentsFailAfter = 1;
 
     const clearsBefore = spies.astCacheClearCalls;
     await expect(
