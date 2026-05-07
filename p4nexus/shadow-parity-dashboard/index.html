@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <title>GitNexus — Shadow Parity Dashboard</title>
+    <title>P4Nexus — Shadow Parity Dashboard</title>
     <!--
       Static dashboard for the RFC #909 shadow-mode parity report.
 
@@ -13,8 +13,8 @@
 
       Usage:
           # from repo root, after a shadow-mode run
-          cp .gitnexus/shadow-parity/latest.json gitnexus/shadow-parity-dashboard/
-          open gitnexus/shadow-parity-dashboard/index.html
+          cp .p4nexus/shadow-parity/latest.json p4nexus/shadow-parity-dashboard/
+          open p4nexus/shadow-parity-dashboard/index.html
 
       CI artifact wiring (follow-up): the CI job publishes a snapshot
       of this directory + latest.json as a downloadable bundle per run.
@@ -173,7 +173,7 @@
         <tbody></tbody>
       </table>
       <div id="empty" class="empty" style="display: none">
-        No records yet. Enable <code>GITNEXUS_SHADOW_MODE=1</code> and run ingestion to populate.
+        No records yet. Enable <code>P4NEXUS_SHADOW_MODE=1</code> and run ingestion to populate.
       </div>
     </main>
     <script>

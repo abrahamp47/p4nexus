@@ -3,7 +3,7 @@
  * Build tree-sitter-proto native binding.
  *
  * Why this script exists:
- *   tree-sitter-proto is vendored under gitnexus/vendor/tree-sitter-proto/
+ *   tree-sitter-proto is vendored under p4nexus/vendor/tree-sitter-proto/
  *   and declared as a `file:` optionalDependency. Previously, the vendored
  *   package had its own `dependencies` and `install` script, which caused
  *   npm to create `vendor/tree-sitter-proto/node_modules/` and
@@ -11,13 +11,13 @@
  *   blocked `rmdir` on global-install upgrade, producing:
  *
  *     ENOTEMPTY: directory not empty, rmdir
- *       '.../gitnexus/vendor/tree-sitter-proto/node_modules/node-addon-api'
+ *       '.../p4nexus/vendor/tree-sitter-proto/node_modules/node-addon-api'
  *
  *   (See https://github.com/abhigyanpatwari/GitNexus/issues/836.)
  *
  *   We stripped `dependencies` and the `install` script from the vendored
  *   package.json, hoisted `node-addon-api` and `node-gyp-build` into
- *   gitnexus's own optionalDependencies, and moved native compilation here.
+ *   p4nexus's own optionalDependencies, and moved native compilation here.
  *
  * What this does:
  *   Runs `npx node-gyp rebuild` inside `node_modules/tree-sitter-proto/`
@@ -28,7 +28,7 @@
  *
  *   Mirrors the tree-sitter-dart build helper. Best-effort: if any
  *   precondition fails (optional dep absent, no toolchain, --ignore-scripts),
- *   warn and exit 0 so gitnexus install still succeeds.
+ *   warn and exit 0 so p4nexus install still succeeds.
  */
 const fs = require('fs');
 const path = require('path');
@@ -75,8 +75,8 @@ try {
 } catch (err) {
   console.warn('[tree-sitter-proto] Could not build native binding:', err.message);
   console.warn(
-    '[tree-sitter-proto] Proto (.proto) parsing will be unavailable. Non-proto gitnexus functionality is unaffected.',
+    '[tree-sitter-proto] Proto (.proto) parsing will be unavailable. Non-proto p4nexus functionality is unaffected.',
   );
-  // Exit 0: optionalDependency failures must not fail the gitnexus install.
+  // Exit 0: optionalDependency failures must not fail the p4nexus install.
   process.exit(0);
 }
