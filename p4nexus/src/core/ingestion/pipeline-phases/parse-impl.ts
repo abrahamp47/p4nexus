@@ -246,7 +246,7 @@ export async function runChunkedParseAndResolve(
   const importCtx = buildImportResolutionContext(allPaths);
   const allPathObjects = allPaths.map((p) => ({ path: p }));
 
-  const sequentialChunkPaths: string[][] = [];
+  const sequentialChunkFiles: Array<Array<{ path: string; content: string }>> = [];
   const chunkNeedsSynthesis = chunks.map((paths) =>
     paths.some((p) => {
       const lang = getLanguageFromFilename(p);
@@ -414,7 +414,9 @@ export async function runChunkedParseAndResolve(
         }
       } else {
         await processImports(graph, chunkFiles, astCache, ctx, undefined, repoPath, allPaths);
-        sequentialChunkPaths.push(chunkPaths);
+        // Sequential fallback reuses these in-memory chunks later to avoid
+        // re-reading the same files from disk during the second pass.
+        sequentialChunkFiles.push(chunkFiles);
       }
 
       filesParsedSoFar += chunkFiles.length;
@@ -480,18 +482,12 @@ export async function runChunkedParseAndResolve(
   // Disposal of the accumulator remains with `crossFile` (owned by U2). We do
   // NOT call `bindingAccumulator.dispose()` here.
   try {
-    if (sequentialChunkPaths.length > 0) {
+    if (sequentialChunkFiles.length > 0) {
       synthesizeWildcardImportBindings(graph, ctx);
       hasSynthesized = true;
     }
     const allSequentialHeritage: ExtractedHeritage[] = [];
-    const cachedSequentialChunkFiles: Array<Array<{ path: string; content: string }>> = [];
-    for (const chunkPaths of sequentialChunkPaths) {
-      const chunkContents = await readFileContents(repoPath, chunkPaths);
-      const chunkFiles = chunkPaths
-        .filter((p) => chunkContents.has(p))
-        .map((p) => ({ path: p, content: chunkContents.get(p)! }));
-      cachedSequentialChunkFiles.push(chunkFiles);
+    for (const chunkFiles of sequentialChunkFiles) {
       astCache = createASTCache(chunkFiles.length);
       const sequentialHeritage = await extractExtractedHeritageFromFiles(chunkFiles, astCache);
       for (const h of sequentialHeritage) allSequentialHeritage.push(h);
@@ -502,8 +498,8 @@ export async function runChunkedParseAndResolve(
         ? buildHeritageMap(allSequentialHeritage, ctx, getHeritageStrategyForLanguage)
         : undefined;
 
-    for (let chunkIdx = 0; chunkIdx < sequentialChunkPaths.length; chunkIdx++) {
-      const chunkFiles = cachedSequentialChunkFiles[chunkIdx];
+    for (let chunkIdx = 0; chunkIdx < sequentialChunkFiles.length; chunkIdx++) {
+      const chunkFiles = sequentialChunkFiles[chunkIdx];
       astCache = createASTCache(chunkFiles.length);
       const rubyHeritage = await processCalls(
         graph,
@@ -530,7 +526,7 @@ export async function runChunkedParseAndResolve(
         extractORMQueriesInline(f.path, f.content, allORMQueries);
       }
       astCache.clear();
-      cachedSequentialChunkFiles[chunkIdx] = [];
+      sequentialChunkFiles[chunkIdx] = [];
     }
 
     // Log resolution cache stats
