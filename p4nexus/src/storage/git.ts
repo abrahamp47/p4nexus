@@ -44,13 +44,29 @@ function runP4Tagged(args: string[], cwd?: string): Record<string, string> {
   return result;
 }
 
+const hasKnownClient = (info: Record<string, string>): boolean => {
+  const clientName = info.clientName?.trim();
+  if (!clientName) return false;
+  return clientName !== '*unknown*' && clientName.toLowerCase() !== 'unknown';
+};
+
+const isPathMappedInClientView = (targetPath: string): boolean => {
+  const absolute = path.resolve(targetPath);
+  // `p4 where .` can return false negatives on some Windows setups.
+  // Probe with `<abs-path>\...` instead, which matches how users validate
+  // their workspace mappings manually.
+  const probe = path.join(absolute, '...');
+  const output = runP4(['where', probe], absolute);
+  return Boolean(output) && !/not in client view/i.test(output);
+};
+
 /**
  * Check if a directory is inside a Perforce workspace.
  * Equivalent to the old isGitRepo.
  */
 export const isGitRepo = (repoPath: string): boolean => {
   const info = runP4Tagged(['info'], repoPath);
-  return !!(info.clientName && info.clientName !== '*unknown*');
+  return hasKnownClient(info);
 };
 
 /**
@@ -105,10 +121,9 @@ export const getRemoteUrl = (repoPath: string): string | undefined => {
  */
 export const getGitRoot = (fromPath: string): string | null => {
   const info = runP4Tagged(['info'], fromPath);
-  if (info.clientRoot) {
-    return path.resolve(info.clientRoot);
-  }
-  return null;
+  if (!hasKnownClient(info) || !info.clientRoot) return null;
+  if (!isPathMappedInClientView(fromPath)) return null;
+  return path.resolve(info.clientRoot);
 };
 
 /**
@@ -169,9 +184,11 @@ export const hasGitDir = (dirPath: string): boolean => {
   try {
     statSync(path.join(dirPath, p4config));
     return true;
-  } catch {
-    return false;
-  }
+  } catch {}
+
+  const info = runP4Tagged(['info'], dirPath);
+  if (!hasKnownClient(info) || !info.clientRoot) return false;
+  return isPathMappedInClientView(dirPath);
 };
 
 /**
@@ -203,8 +220,7 @@ export const parseRepoNameFromUrl = (url: string | null | undefined): string | n
  */
 export const getInferredRepoName = (repoPath: string): string | null => {
   const info = runP4Tagged(['info'], repoPath);
-  const client = info.clientName;
-  return client && client !== '*unknown*' ? client : null;
+  return hasKnownClient(info) ? info.clientName : null;
 };
 
 // ─── Diff Parsing ─────────────────────────────────────────────────────────────
