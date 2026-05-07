@@ -32,6 +32,7 @@
     "build": "node scripts/build.js",
     "serve": "tsx src/cli/index.ts serve",
     "dev": "tsx watch src/cli/index.ts",
+    "bench:parse-chunks": "tsx scripts/bench-parse-chunks.ts",
     "test": "vitest run",
     "test:unit": "vitest run test/unit",
     "test:integration": "vitest run test/integration",
