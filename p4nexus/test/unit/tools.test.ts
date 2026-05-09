@@ -170,7 +170,7 @@ describe('P4NEXUS_TOOLS', () => {
   it('detect_changes scope has correct enum values', () => {
     const detectTool = P4NEXUS_TOOLS.find((t) => t.name === 'detect_changes')!;
     const scopeProp = detectTool.inputSchema.properties.scope;
-    expect(scopeProp.enum).toEqual(['unstaged', 'staged', 'all', 'compare']);
+    expect(scopeProp.enum).toEqual(['default', 'all', 'shelved']);
   });
 
   it('api_impact tool has no required parameters', () => {

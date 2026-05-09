@@ -132,4 +132,39 @@ describe('Perforce workspace detection', () => {
     expect(hasGitDir(target)).toBe(false);
     expect(getGitRoot(target)).toBeNull();
   });
+
+  it('reads latest submitted changelist from p4 changes -Mj output', async () => {
+    mockedExecFileSync.mockImplementation((cmd, args) => {
+      const argv = args as string[];
+      if (cmd === 'p4' && argv[0] === '-Mj' && argv[1] === 'changes') {
+        return [
+          '{"code":"stat","data":"Change 12340 on 2026/05/09 by user@client"}',
+          '{"change":"12340","status":"submitted"}',
+        ].join('\n');
+      }
+      return '';
+    });
+
+    const { getCurrentCommit } = await import('../../src/storage/git.js');
+    expect(getCurrentCommit('C:\\p4\\prod_depot\\10.5.0\\maintHF3')).toBe('12340');
+  });
+
+  it('normalizes Perforce server address host in remote URL', async () => {
+    mockedExecFileSync.mockImplementation((cmd, args) => {
+      const argv = args as string[];
+      if (cmd === 'p4' && argv[0] === '-ztag' && argv[1] === 'info') {
+        return taggedInfo({
+          clientName: 'mdm_develop',
+          clientRoot: 'C:\\p4',
+          serverAddress: 'ssl:PERFORCE.COMPANY.NET:1666',
+        });
+      }
+      return '';
+    });
+
+    const { getRemoteUrl } = await import('../../src/storage/git.js');
+    expect(getRemoteUrl('C:\\p4\\prod_depot\\10.5.0\\maintHF3')).toBe(
+      'ssl:perforce.company.net:1666',
+    );
+  });
 });

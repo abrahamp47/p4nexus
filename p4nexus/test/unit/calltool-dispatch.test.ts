@@ -541,10 +541,9 @@ describe('LocalBackend.callTool', () => {
   });
 
   it('dispatches detect_changes tool', async () => {
-    // detect_changes calls execFileSync which we haven't mocked at module level,
-    // so it will throw a git error — that's fine, we test the error path
-    const result = await backend.callTool('detect_changes', { scope: 'unstaged' });
-    // Should either return changes or a git error
+    // detect_changes shells out to p4; without a configured workspace this path
+    // should still return a structured result.
+    const result = await backend.callTool('detect_changes', { scope: 'default' });
     expect(result).toBeDefined();
     expect(result.error || result.summary).toBeDefined();
   });

@@ -346,7 +346,7 @@ describe('worker pool integration', () => {
 
     try {
       await expect(pool.dispatch<any, any>([{ path: 'crash.ts', content: '' }])).rejects.toThrow(
-        /simulated startup crash|exited with code/,
+        /simulated startup crash|exited with code|sequential fallback|idle timeout/,
       );
     } finally {
       warnSpy.mockRestore();

@@ -58,7 +58,7 @@ describe('indexCommand', () => {
     mockIsGitRepo.mockReturnValue(true);
   });
 
-  it('fails when target path is not a git repository', async () => {
+  it('fails when target path is not a Perforce workspace', async () => {
     const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
     mockIsGitRepo.mockReturnValue(false);
 
@@ -67,7 +67,7 @@ describe('indexCommand', () => {
 
     expect(mockRegisterRepo).not.toHaveBeenCalled();
     expect(process.exitCode).toBe(1);
-    expect(logSpy).toHaveBeenCalledWith(`  Not a git repository: ${resolvedOutside}`);
+    expect(logSpy).toHaveBeenCalledWith(`  Not a Perforce workspace: ${resolvedOutside}`);
   });
 
   it('fails when .p4nexus folder does not exist', async () => {
@@ -139,17 +139,17 @@ describe('indexCommand', () => {
     expect(process.exitCode).toBeUndefined();
   });
 
-  it('registers non-git path when --allow-non-git is set', async () => {
+  it('registers non-workspace path when --allow-non-p4 is set', async () => {
     mockIsGitRepo.mockReturnValue(false);
 
     const { indexCommand } = await import('../../src/cli/index-repo.js');
-    await indexCommand(['/outside/path'], { allowNonGit: true });
+    await indexCommand(['/outside/path'], { allowNonP4: true });
 
     expect(mockRegisterRepo).toHaveBeenCalledTimes(1);
     expect(process.exitCode).toBeUndefined();
   });
 
-  it('fails when called with no path and cwd is not inside a git repo', async () => {
+  it('fails when called with no path and cwd is not inside a Perforce workspace', async () => {
     const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
     mockGetGitRoot.mockReturnValue(null);
 
@@ -158,7 +158,9 @@ describe('indexCommand', () => {
 
     expect(mockRegisterRepo).not.toHaveBeenCalled();
     expect(process.exitCode).toBe(1);
-    expect(logSpy).toHaveBeenCalledWith('  Not inside a git repository, try to run git init\n');
+    expect(logSpy).toHaveBeenCalledWith(
+      '  Not inside a Perforce workspace. Use --allow-non-p4 to force registration.\n',
+    );
   });
 
   it('registers from cwd when no path is provided', async () => {
