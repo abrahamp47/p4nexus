@@ -260,7 +260,7 @@ Returns: changed symbols, affected processes, and a risk summary.`,
       properties: {
         scope: {
           type: 'string',
-          description: 'What to analyze: "default" (default changelist), a changelist number, "all" (all pending), or "shelved"',
+          description: 'What to analyze: "default" (default changelist), "all", or "shelved"',
           enum: ['default', 'all', 'shelved'],
           default: 'default',
         },

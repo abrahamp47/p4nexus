@@ -12,7 +12,7 @@
 
 import fs from 'fs/promises';
 import path from 'path';
-import { execSync, execFileSync } from 'child_process';
+import { getCurrentCommit as getWorkspaceChangelist } from '../../storage/git.js';
 
 import {
   initWikiDb,
@@ -823,46 +823,16 @@ export class WikiGenerator {
   // ─── Helpers ────────────────────────────────────────────────────────
 
   private getCurrentCommit(): string {
-    try {
-      return execSync('git rev-parse HEAD', { cwd: this.repoPath }).toString().trim();
-    } catch {
-      return '';
-    }
+    return getWorkspaceChangelist(this.repoPath);
   }
 
   /**
    * Check if fromCommit is an ancestor of toCommit (reachable in git history).
    * Returns false if commits are on divergent branches or fromCommit doesn't exist.
    */
-  private isCommitReachable(fromCommit: string, toCommit: string): boolean {
-    try {
-      execFileSync('git', ['merge-base', '--is-ancestor', fromCommit, toCommit], {
-        cwd: this.repoPath,
-        stdio: 'ignore',
-      });
-      return true;
-    } catch {
-      return false;
-    }
-  }
-
   private getChangedFiles(fromCommit: string, toCommit: string): string[] | null {
-    // First check if fromCommit is reachable from toCommit
-    // This handles the case where wiki was generated on a different branch
-    if (!this.isCommitReachable(fromCommit, toCommit)) {
-      return null; // Signal that we can't compute diff (divergent branches)
-    }
-
-    try {
-      const output = execFileSync('git', ['diff', `${fromCommit}..${toCommit}`, '--name-only'], {
-        cwd: this.repoPath,
-      })
-        .toString()
-        .trim();
-      return output ? output.split('\n').filter(Boolean) : [];
-    } catch {
-      return null; // Treat git errors as needing full regen
-    }
+    if (!fromCommit || !toCommit) return null;
+    return null;
   }
 
   private async readSourceFiles(filePaths: string[]): Promise<string> {

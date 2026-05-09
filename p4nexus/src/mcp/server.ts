@@ -203,10 +203,10 @@ export function createMCPServer(backend: LocalBackend): Server {
         arguments: [
           {
             name: 'scope',
-            description: 'What to analyze: unstaged, staged, all, or compare',
+            description: 'What to analyze: default (default changelist), all, or shelved',
             required: false,
           },
-          { name: 'base_ref', description: 'Branch/commit for compare scope', required: false },
+          { name: 'changelist', description: 'Optional changelist number', required: false },
         ],
       },
       {
@@ -229,8 +229,8 @@ export function createMCPServer(backend: LocalBackend): Server {
     const { name, arguments: args } = request.params;
 
     if (name === 'detect_impact') {
-      const scope = args?.scope || 'all';
-      const baseRef = args?.base_ref || '';
+      const scope = args?.scope || 'default';
+      const changelist = args?.changelist || '';
       return {
         messages: [
           {
@@ -240,7 +240,7 @@ export function createMCPServer(backend: LocalBackend): Server {
               text: `Analyze the impact of my current code changes before committing.
 
 Follow these steps:
-1. Run \`detect_changes(${JSON.stringify({ scope, ...(baseRef ? { base_ref: baseRef } : {}) })})\` to find what changed and affected processes
+1. Run \`detect_changes(${JSON.stringify({ scope, ...(changelist ? { changelist } : {}) })})\` to find what changed and affected processes
 2. For each changed symbol in critical processes, run \`context({name: "<symbol>"})\` to see its full reference graph
 3. For any high-risk items (many callers or cross-process), run \`impact({target: "<symbol>", direction: "upstream"})\` for blast radius
 4. Summarize: changes, affected processes, risk level, and recommended actions

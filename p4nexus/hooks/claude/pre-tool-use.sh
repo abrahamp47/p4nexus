@@ -1,5 +1,5 @@
 #!/bin/bash
-# GitNexus PreToolUse hook for Claude Code
+# P4Nexus PreToolUse hook for Claude Code
 # Intercepts Grep/Glob/Bash searches and augments with graph context.
 # Receives JSON on stdin with { tool_name, tool_input, cwd, ... }
 # Returns JSON with additionalContext for graph-enriched results.
@@ -45,11 +45,11 @@ if [ -z "$PATTERN" ] || [ ${#PATTERN} -lt 3 ]; then
   exit 0
 fi
 
-# Check if we're in a GitNexus-indexed repo
+# Check if we're in a P4Nexus-indexed repo
 dir="${CWD:-$PWD}"
 found=false
 for i in 1 2 3 4 5; do
-  if [ -d "$dir/.gitnexus" ]; then
+  if [ -d "$dir/.p4nexus" ]; then
     found=true
     break
   fi
@@ -62,9 +62,9 @@ if [ "$found" = false ]; then
   exit 0
 fi
 
-# Run gitnexus augment — must be fast (<500ms target)
-# augment writes to stderr (KuzuDB captures stdout at OS level), so capture stderr and discard stdout
-RESULT=$(cd "$CWD" && npx -y gitnexus augment "$PATTERN" 2>&1 1>/dev/null)
+# Run p4nexus augment — must be fast (<500ms target)
+# augment writes to stderr (LadybugDB captures stdout at OS level), so capture stderr and discard stdout
+RESULT=$(cd "$CWD" && npx -y p4nexus augment "$PATTERN" 2>&1 1>/dev/null)
 
 if [ -n "$RESULT" ]; then
   ESCAPED=$(echo "$RESULT" | jq -Rs .)
