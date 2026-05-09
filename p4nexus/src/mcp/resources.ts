@@ -313,7 +313,7 @@ async function getContextResource(backend: LocalBackend, repoName?: string): Pro
 
   // Check staleness
   const repoPath = repo.repoPath;
-  const lastCommit = repo.lastCommit || 'HEAD';
+  const lastCommit = repo.lastCommit || 'latest';
   const staleness = repoPath
     ? checkStaleness(repoPath, lastCommit)
     : { isStale: false, commitsBehind: 0 };

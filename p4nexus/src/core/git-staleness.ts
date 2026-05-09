@@ -28,18 +28,13 @@ export function checkStaleness(repoPath: string, lastCommit: string): StalenessI
 
   const lastNum = parseInt(lastCommit, 10);
   const currentNum = parseInt(currentCl, 10);
-
-  if (isNaN(lastNum) || isNaN(currentNum)) {
-    return { isStale: false, commitsBehind: 0 };
-  }
-
-  const commitsBehind = currentNum - lastNum;
+  const commitsBehind = !isNaN(lastNum) && !isNaN(currentNum) ? currentNum - lastNum : 0;
 
   if (commitsBehind > 0) {
     return {
       isStale: true,
       commitsBehind,
-      hint: `⚠️ Index is ${commitsBehind} changelist${commitsBehind > 1 ? 's' : ''} behind latest. Run analyze tool to update.`,
+      hint: `⚠️ Index is ${commitsBehind} changelist${commitsBehind > 1 ? 's' : ''} behind current workspace head. Run analyze tool to update.`,
     };
   }
 
@@ -87,7 +82,7 @@ export async function checkCwdMatch(cwd: string): Promise<CwdMatch> {
 
   const cwdHead = getCurrentCommit(cwdRoot) || undefined;
 
-  // Calculate drift by changelist number difference
+  // Calculate drift by changelist/commit distance
   const lastNum = parseInt(sibling.lastCommit, 10);
   const headNum = cwdHead ? parseInt(cwdHead, 10) : undefined;
   const drift = headNum && lastNum ? Math.max(0, headNum - lastNum) : undefined;
@@ -102,7 +97,7 @@ export async function checkCwdMatch(cwd: string): Promise<CwdMatch> {
       `Results may be stale — re-run \`p4nexus analyze\` to refresh.`;
   } else {
     hint =
-      `⚠️ Index for "${sibling.name}" was built from a different workspace. ` +
+      `⚠️ Index for "${sibling.name}" was built from a different sibling clone/workspace. ` +
       `Results may be stale — re-run \`p4nexus analyze\` to refresh.`;
   }
 

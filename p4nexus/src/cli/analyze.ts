@@ -225,7 +225,7 @@ export const analyzeCommand = async (inputPath?: string, options?: AnalyzeOption
     const gitRoot = getGitRoot(process.cwd());
     if (!gitRoot) {
       console.log(
-        '  Not inside a Perforce workspace.\n  Tip: pass --skip-p4 to index any folder without a Perforce workspace.\n',
+        '  Not inside a Perforce workspace.\n  Tip: pass --skip-p4 to index any folder without workspace root discovery.\n',
       );
       process.exitCode = 1;
       return;
@@ -236,7 +236,7 @@ export const analyzeCommand = async (inputPath?: string, options?: AnalyzeOption
   const repoHasGit = hasGitDir(repoPath);
   if (!repoHasGit && !options?.skipP4) {
     console.log(
-      '  Not a Perforce workspace.\n  Tip: pass --skip-p4 to index any folder without a Perforce workspace.\n',
+      '  Not a Perforce workspace.\n  Tip: pass --skip-p4 to index any folder without workspace metadata.\n',
     );
     process.exitCode = 1;
     return;

@@ -19,8 +19,7 @@ import {
 export { isWriteQuery };
 // Embedding imports are lazy (dynamic import) to avoid loading onnxruntime-node
 // at MCP server startup — crashes on unsupported Node ABI versions (#89)
-// git utilities available if needed
-// import { isGitRepo, getCurrentCommit, getGitRoot } from '../../storage/git.js';
+// diff parsing utilities for Perforce change analysis
 import { parseDiffHunks, type FileDiff } from '../../storage/git.js';
 import {
   listRegisteredRepos,
@@ -2019,7 +2018,7 @@ export class LocalBackend {
   }
 
   /**
-   * Detect changes — git-diff based impact analysis.
+   * Detect changes — Perforce diff based impact analysis.
    * Maps changed lines to indexed symbols, then finds affected processes.
    */
   private async detectChanges(
@@ -2034,7 +2033,7 @@ export class LocalBackend {
     const scope = params.scope || 'default';
     const { execFileSync } = await import('child_process');
 
-    // Build p4 diff args based on scope
+    let diffOutput: string;
     let diffArgs: string[];
     switch (scope) {
       case 'all':
@@ -2044,17 +2043,13 @@ export class LocalBackend {
         if (!params.changelist) return { error: 'changelist is required for "shelved" scope' };
         diffArgs = ['describe', '-du', '-S', params.changelist];
         break;
-      default:
-        // 'default' or specific changelist
-        if (params.changelist) {
-          diffArgs = ['diff', '-du', '-c', params.changelist];
-        } else {
-          diffArgs = ['diff', '-du'];
-        }
+      case 'default':
+        diffArgs = params.changelist ? ['diff', '-du', '-c', params.changelist] : ['diff', '-du'];
         break;
+      default:
+        return { error: `Unknown detect_changes scope: ${scope}. Use default/all/shelved.` };
     }
 
-    let diffOutput: string;
     try {
       diffOutput = execFileSync('p4', diffArgs, {
         cwd: repo.repoPath,
