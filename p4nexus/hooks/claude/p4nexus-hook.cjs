@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 /**
- * GitNexus Claude Code Hook
+ * P4Nexus Claude Code Hook
  *
  * PreToolUse  — intercepts Grep/Glob/Bash searches and augments
- *               with graph context from the GitNexus index.
+ *               with graph context from the P4Nexus index.
  * PostToolUse — detects stale index after git mutations and notifies
  *               the agent to reindex.
  *
@@ -27,10 +27,6 @@ function readInput() {
   }
 }
 
-/**
- * Find the .gitnexus directory by walking up from startDir.
- * Returns the path to .gitnexus/ or null if not found.
- */
 function isGlobalRegistryDir(candidate) {
   if (fs.existsSync(path.join(candidate, 'meta.json'))) return false;
   return (
@@ -40,13 +36,13 @@ function isGlobalRegistryDir(candidate) {
 }
 
 /**
- * Walk up from `startDir` looking for a non-registry `.gitnexus/` folder.
- * Returns the path to `.gitnexus/` or null if not found within 5 levels.
+ * Walk up from `startDir` looking for a non-registry `.p4nexus/` folder.
+ * Returns the path to `.p4nexus/` or null if not found within 5 levels.
  */
-function walkForGitNexusDir(startDir) {
+function walkForP4NexusDir(startDir) {
   let dir = startDir;
   for (let i = 0; i < 5; i++) {
-    const candidate = path.join(dir, '.gitnexus');
+    const candidate = path.join(dir, '.p4nexus');
     if (fs.existsSync(candidate)) {
       if (!isGlobalRegistryDir(candidate)) return candidate;
     }
@@ -60,7 +56,7 @@ function walkForGitNexusDir(startDir) {
 /**
  * Resolve the canonical (main) worktree root for `cwd`, when `cwd` is inside
  * any git working tree — including a *linked* worktree created via
- * `git worktree add`. Linked worktrees never contain `.gitnexus/`, so the
+ * `git worktree add`. Linked worktrees never contain `.p4nexus/`, so the
  * upward walk from cwd alone misses the index. Returns null when `cwd` is
  * not inside a git repo or `git` is not available.
  *
@@ -85,19 +81,15 @@ function findCanonicalRepoRoot(cwd) {
   }
 }
 
-function findGitNexusDir(startDir) {
+function findP4NexusDir(startDir) {
   const cwd = startDir || process.cwd();
 
-  // Fast path: the cwd is inside the canonical repo (most common case).
-  const fromCwd = walkForGitNexusDir(cwd);
+  const fromCwd = walkForP4NexusDir(cwd);
   if (fromCwd) return fromCwd;
 
-  // Fallback: cwd may be inside a linked git worktree whose `.gitnexus/`
-  // only lives in the canonical repo root. Resolve the shared git dir
-  // and retry from there.
   const canonicalRoot = findCanonicalRepoRoot(cwd);
   if (canonicalRoot && canonicalRoot !== cwd) {
-    return walkForGitNexusDir(canonicalRoot);
+    return walkForP4NexusDir(canonicalRoot);
   }
   return null;
 }
@@ -161,16 +153,16 @@ function extractPattern(toolName, toolInput) {
 }
 
 /**
- * Resolve the gitnexus CLI path.
+ * Resolve the p4nexus CLI path.
  * 1. Relative path (works when script is inside npm package)
- * 2. require.resolve (works when gitnexus is globally installed)
+ * 2. require.resolve (works when p4nexus is globally installed)
  * 3. Fall back to npx (returns empty string)
  */
 function resolveCliPath() {
   let cliPath = path.resolve(__dirname, '..', '..', 'dist', 'cli', 'index.js');
   if (!fs.existsSync(cliPath)) {
     try {
-      cliPath = require.resolve('gitnexus/dist/cli/index.js');
+      cliPath = require.resolve('p4nexus/dist/cli/index.js');
     } catch {
       cliPath = '';
     }
@@ -179,10 +171,10 @@ function resolveCliPath() {
 }
 
 /**
- * Spawn a gitnexus CLI command synchronously.
- * Returns the stderr output (KuzuDB captures stdout at OS level).
+ * Spawn a p4nexus CLI command synchronously.
+ * Returns the stderr output (LadybugDB captures stdout at OS level).
  */
-function runGitNexusCli(cliPath, args, cwd, timeout) {
+function runP4NexusCli(cliPath, args, cwd, timeout) {
   const isWin = process.platform === 'win32';
   if (cliPath) {
     return spawnSync(process.execPath, [cliPath, ...args], {
@@ -192,8 +184,7 @@ function runGitNexusCli(cliPath, args, cwd, timeout) {
       stdio: ['pipe', 'pipe', 'pipe'],
     });
   }
-  // On Windows, invoke npx.cmd directly (no shell needed)
-  return spawnSync(isWin ? 'npx.cmd' : 'npx', ['-y', 'gitnexus', ...args], {
+  return spawnSync(isWin ? 'npx.cmd' : 'npx', ['-y', 'p4nexus', ...args], {
     encoding: 'utf-8',
     timeout: timeout + 5000,
     cwd,
@@ -207,7 +198,7 @@ function runGitNexusCli(cliPath, args, cwd, timeout) {
 function handlePreToolUse(input) {
   const cwd = input.cwd || process.cwd();
   if (!path.isAbsolute(cwd)) return;
-  if (!findGitNexusDir(cwd)) return;
+  if (!findP4NexusDir(cwd)) return;
 
   const toolName = input.tool_name || '';
   const toolInput = input.tool_input || {};
@@ -220,7 +211,7 @@ function handlePreToolUse(input) {
   const cliPath = resolveCliPath();
   let result = '';
   try {
-    const child = runGitNexusCli(cliPath, ['augment', '--', pattern], cwd, 7000);
+    const child = runP4NexusCli(cliPath, ['augment', '--', pattern], cwd, 7000);
     if (!child.error && child.status === 0) {
       result = child.stderr || '';
     }
@@ -247,10 +238,10 @@ function sendHookResponse(hookEventName, message) {
 /**
  * PostToolUse handler — detect index staleness after git mutations.
  *
- * Instead of spawning a full `gitnexus analyze` synchronously (which blocks
- * the agent for up to 120s and risks KuzuDB corruption on timeout), we do a
+ * Instead of spawning a full `p4nexus analyze` synchronously (which blocks
+ * the agent for up to 120s and risks DB corruption on timeout), we do a
  * lightweight staleness check: compare `git rev-parse HEAD` against the
- * lastCommit stored in `.gitnexus/meta.json`. If they differ, notify the
+ * lastCommit stored in `.p4nexus/meta.json`. If they differ, notify the
  * agent so it can decide when to reindex.
  */
 function handlePostToolUse(input) {
@@ -260,16 +251,14 @@ function handlePostToolUse(input) {
   const command = (input.tool_input || {}).command || '';
   if (!/\bgit\s+(commit|merge|rebase|cherry-pick|pull)(\s|$)/.test(command)) return;
 
-  // Only proceed if the command succeeded
   const toolOutput = input.tool_output || {};
   if (toolOutput.exit_code !== undefined && toolOutput.exit_code !== 0) return;
 
   const cwd = input.cwd || process.cwd();
   if (!path.isAbsolute(cwd)) return;
-  const gitNexusDir = findGitNexusDir(cwd);
-  if (!gitNexusDir) return;
+  const p4nexusDir = findP4NexusDir(cwd);
+  if (!p4nexusDir) return;
 
-  // Compare HEAD against last indexed commit — skip if unchanged
   let currentHead = '';
   try {
     const headResult = spawnSync('git', ['rev-parse', 'HEAD'], {
@@ -288,25 +277,23 @@ function handlePostToolUse(input) {
   let lastCommit = '';
   let hadEmbeddings = false;
   try {
-    const meta = JSON.parse(fs.readFileSync(path.join(gitNexusDir, 'meta.json'), 'utf-8'));
+    const meta = JSON.parse(fs.readFileSync(path.join(p4nexusDir, 'meta.json'), 'utf-8'));
     lastCommit = meta.lastCommit || '';
     hadEmbeddings = meta.stats && meta.stats.embeddings > 0;
   } catch {
     /* no meta — treat as stale */
   }
 
-  // If HEAD matches last indexed commit, no reindex needed
   if (currentHead && currentHead === lastCommit) return;
 
-  const analyzeCmd = `npx gitnexus analyze${hadEmbeddings ? ' --embeddings' : ''}`;
+  const analyzeCmd = `npx p4nexus analyze${hadEmbeddings ? ' --embeddings' : ''}`;
   sendHookResponse(
     'PostToolUse',
-    `GitNexus index is stale (last indexed: ${lastCommit ? lastCommit.slice(0, 7) : 'never'}). ` +
+    `P4Nexus index is stale (last indexed: ${lastCommit ? lastCommit.slice(0, 7) : 'never'}). ` +
       `Run \`${analyzeCmd}\` to update the knowledge graph.`,
   );
 }
 
-// Dispatch map for hook events
 const handlers = {
   PreToolUse: handlePreToolUse,
   PostToolUse: handlePostToolUse,
@@ -318,8 +305,8 @@ function main() {
     const handler = handlers[input.hook_event_name || ''];
     if (handler) handler(input);
   } catch (err) {
-    if (process.env.GITNEXUS_DEBUG) {
-      console.error('GitNexus hook error:', (err.message || '').slice(0, 200));
+    if (process.env.P4NEXUS_DEBUG) {
+      console.error('P4Nexus hook error:', (err.message || '').slice(0, 200));
     }
   }
 }

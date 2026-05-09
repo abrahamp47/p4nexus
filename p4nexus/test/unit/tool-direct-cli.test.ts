@@ -36,14 +36,14 @@ describe('direct CLI tool commands', () => {
     const { detectChangesCommand } = await import('../../src/cli/tool.js');
 
     await detectChangesCommand({
-      scope: 'compare',
-      baseRef: 'main',
+      scope: 'shelved',
+      changelist: '12345',
       repo: 'p4nexus',
     });
 
     expect(callToolMock).toHaveBeenCalledWith('detect_changes', {
-      scope: 'compare',
-      base_ref: 'main',
+      scope: 'shelved',
+      changelist: '12345',
       repo: 'p4nexus',
     });
     expect(writeSyncMock).toHaveBeenCalledWith(1, expect.stringContaining('Risk level: low'));

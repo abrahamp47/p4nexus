@@ -354,8 +354,11 @@ export const loadIgnoreRules = async (
   const ig = ignore();
   let hasRules = false;
 
-  // Allow users to bypass .gitignore/.p4ignore parsing
-  const skipVcsIgnore = options?.noGitignore ?? !!process.env.P4NEXUS_NO_VCSIGNORE;
+  // Allow users to bypass .gitignore/.p4ignore parsing.
+  // Keep backward compatibility with the older env var name.
+  const envSkipVcsIgnore =
+    !!process.env.P4NEXUS_NO_GITIGNORE || !!process.env.P4NEXUS_NO_VCSIGNORE;
+  const skipVcsIgnore = options?.noGitignore ?? envSkipVcsIgnore;
   const filenames = skipVcsIgnore
     ? ['.p4nexusignore']
     : ['.gitignore', '.p4ignore', '.p4nexusignore'];

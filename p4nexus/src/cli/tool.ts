@@ -209,8 +209,9 @@ export async function detectChangesCommand(options?: {
   repo?: string;
 }): Promise<void> {
   const backend = await getBackend();
+  const scope = options?.scope || 'default';
   const result = await backend.callTool('detect_changes', {
-    scope: options?.scope || 'default',
+    scope,
     changelist: options?.changelist,
     repo: options?.repo,
   });

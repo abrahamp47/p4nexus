@@ -64,6 +64,7 @@ import { extractFetchCallsFromFiles } from '../call-processor.js';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import { performance } from 'node:perf_hooks';
 
 import { isDev } from '../utils/env.js';
 import { synthesizeWildcardImportBindings, needsSynthesis } from './wildcard-synthesis.js';
@@ -73,6 +74,7 @@ import { extractORMQueriesInline } from './orm-extraction.js';
 
 /** Max bytes of source content to load per parse chunk. */
 const CHUNK_BYTE_BUDGET = 20 * 1024 * 1024; // 20MB
+const PROF_PARSE_CHUNKS = process.env.PROF_PARSE_CHUNKS === '1';
 
 // ── Main parse + resolve function ──────────────────────────────────────────
 
@@ -142,6 +144,7 @@ export async function runChunkedParseAndResolve(
   }
 
   const totalParseable = parseableScanned.length;
+  const parseableSizeByPath = new Map(parseableScanned.map((f) => [f.path, f.size]));
 
   if (totalParseable === 0) {
     onProgress({
@@ -246,7 +249,7 @@ export async function runChunkedParseAndResolve(
   const importCtx = buildImportResolutionContext(allPaths);
   const allPathObjects = allPaths.map((p) => ({ path: p }));
 
-  const sequentialChunkPaths: string[][] = [];
+  const sequentialChunkFiles: Array<Array<{ path: string; content: string }>> = [];
   const chunkNeedsSynthesis = chunks.map((paths) =>
     paths.some((p) => {
       const lang = getLanguageFromFilename(p);
@@ -270,16 +273,34 @@ export async function runChunkedParseAndResolve(
   const deferredWorkerHeritage: ExtractedHeritage[] = [];
   const deferredConstructorBindings: FileConstructorBindings[] = [];
   const deferredAssignments: ExtractedAssignment[] = [];
+  let chunkReadMs = 0;
+  let chunkProcessMs = 0;
+  let chunkTotalBytes = 0;
+  let fallbackMs = 0;
+
+  const loadChunkFiles = async (
+    chunkPaths: string[],
+  ): Promise<Array<{ path: string; content: string }>> => {
+    const chunkContents = await readFileContents(repoPath, chunkPaths);
+    return chunkPaths
+      .filter((p) => chunkContents.has(p))
+      .map((p) => ({ path: p, content: chunkContents.get(p)! }));
+  };
 
   try {
+    let nextChunkFilesPromise: Promise<Array<{ path: string; content: string }>> | null =
+      numChunks > 0 ? loadChunkFiles(chunks[0]) : null;
+
     for (let chunkIdx = 0; chunkIdx < numChunks; chunkIdx++) {
       const chunkPaths = chunks[chunkIdx];
+      const readStart = performance.now();
+      const chunkFiles = nextChunkFilesPromise ? await nextChunkFilesPromise : [];
+      chunkReadMs += performance.now() - readStart;
+      nextChunkFilesPromise =
+        chunkIdx + 1 < numChunks ? loadChunkFiles(chunks[chunkIdx + 1]) : null;
+      chunkTotalBytes += chunkPaths.reduce((sum, p) => sum + (parseableSizeByPath.get(p) ?? 0), 0);
 
-      const chunkContents = await readFileContents(repoPath, chunkPaths);
-      const chunkFiles = chunkPaths
-        .filter((p) => chunkContents.has(p))
-        .map((p) => ({ path: p, content: chunkContents.get(p)! }));
-
+      const processStart = performance.now();
       const chunkWorkerData = await processParsing(
         graph,
         chunkFiles,
@@ -303,6 +324,7 @@ export async function runChunkedParseAndResolve(
         },
         workerPool,
       );
+      chunkProcessMs += performance.now() - processStart;
 
       const chunkBasePercent = 20 + (filesParsedSoFar / totalParseable) * 62;
 
@@ -414,7 +436,9 @@ export async function runChunkedParseAndResolve(
         }
       } else {
         await processImports(graph, chunkFiles, astCache, ctx, undefined, repoPath, allPaths);
-        sequentialChunkPaths.push(chunkPaths);
+        // Sequential fallback reuses these in-memory chunks later to avoid
+        // re-reading the same files from disk during the second pass.
+        sequentialChunkFiles.push(chunkFiles);
       }
 
       filesParsedSoFar += chunkFiles.length;
@@ -479,19 +503,14 @@ export async function runChunkedParseAndResolve(
   //
   // Disposal of the accumulator remains with `crossFile` (owned by U2). We do
   // NOT call `bindingAccumulator.dispose()` here.
+  const fallbackStart = performance.now();
   try {
-    if (sequentialChunkPaths.length > 0) {
+    if (sequentialChunkFiles.length > 0) {
       synthesizeWildcardImportBindings(graph, ctx);
       hasSynthesized = true;
     }
     const allSequentialHeritage: ExtractedHeritage[] = [];
-    const cachedSequentialChunkFiles: Array<Array<{ path: string; content: string }>> = [];
-    for (const chunkPaths of sequentialChunkPaths) {
-      const chunkContents = await readFileContents(repoPath, chunkPaths);
-      const chunkFiles = chunkPaths
-        .filter((p) => chunkContents.has(p))
-        .map((p) => ({ path: p, content: chunkContents.get(p)! }));
-      cachedSequentialChunkFiles.push(chunkFiles);
+    for (const chunkFiles of sequentialChunkFiles) {
       astCache = createASTCache(chunkFiles.length);
       const sequentialHeritage = await extractExtractedHeritageFromFiles(chunkFiles, astCache);
       for (const h of sequentialHeritage) allSequentialHeritage.push(h);
@@ -502,8 +521,8 @@ export async function runChunkedParseAndResolve(
         ? buildHeritageMap(allSequentialHeritage, ctx, getHeritageStrategyForLanguage)
         : undefined;
 
-    for (let chunkIdx = 0; chunkIdx < sequentialChunkPaths.length; chunkIdx++) {
-      const chunkFiles = cachedSequentialChunkFiles[chunkIdx];
+    for (let chunkIdx = 0; chunkIdx < sequentialChunkFiles.length; chunkIdx++) {
+      const chunkFiles = sequentialChunkFiles[chunkIdx];
       astCache = createASTCache(chunkFiles.length);
       const rubyHeritage = await processCalls(
         graph,
@@ -530,7 +549,7 @@ export async function runChunkedParseAndResolve(
         extractORMQueriesInline(f.path, f.content, allORMQueries);
       }
       astCache.clear();
-      cachedSequentialChunkFiles[chunkIdx] = [];
+      sequentialChunkFiles[chunkIdx] = [];
     }
 
     // Log resolution cache stats
@@ -567,6 +586,7 @@ export async function runChunkedParseAndResolve(
       }
     }
   }
+  fallbackMs = performance.now() - fallbackStart;
 
   if (!hasSynthesized) {
     const synthesized = synthesizeWildcardImportBindings(graph, ctx);
@@ -600,6 +620,16 @@ export async function runChunkedParseAndResolve(
   importCtx.resolveCache.clear();
   importCtx.index = EMPTY_INDEX;
   importCtx.normalizedFileList = [];
+
+  if (PROF_PARSE_CHUNKS) {
+    const totalMs = chunkReadMs + chunkProcessMs + fallbackMs;
+    const mb = chunkTotalBytes / (1024 * 1024);
+    const readPct = totalMs > 0 ? (chunkReadMs / totalMs) * 100 : 0;
+    const processPct = totalMs > 0 ? (chunkProcessMs / totalMs) * 100 : 0;
+    console.log(
+      `[parse:chunks] chunks=${numChunks} parseable=${totalParseable} sizeMB=${mb.toFixed(1)} readMs=${chunkReadMs.toFixed(1)} processMs=${chunkProcessMs.toFixed(1)} fallbackMs=${fallbackMs.toFixed(1)} readPct=${readPct.toFixed(1)} processPct=${processPct.toFixed(1)} workers=${workerPool !== undefined ? 'on' : 'off'}`,
+    );
+  }
 
   return {
     exportedTypeMap,

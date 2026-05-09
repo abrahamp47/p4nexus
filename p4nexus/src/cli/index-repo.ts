@@ -49,17 +49,17 @@ export const indexCommand = async (inputPathParts?: string[], options?: IndexOpt
   } else {
     const gitRoot = getGitRoot(process.cwd());
     if (!gitRoot) {
-      console.log('  Not inside a Perforce workspace, ensure p4 client is configured\n');
+      console.log('  Not inside a Perforce workspace. Use --allow-non-p4 to force registration.\n');
       process.exitCode = 1;
       return;
     }
     repoPath = gitRoot;
   }
 
-  if (!options?.allowNonP4 && !isGitRepo(repoPath)) {
+  const allowNonRepo = options?.allowNonP4;
+  if (!allowNonRepo && !isGitRepo(repoPath)) {
     console.log(`  Not a Perforce workspace: ${repoPath}`);
-    console.log('  Initialize one with `git init` or choose a valid repo path.\n');
-    console.log('  Or use --allow-non-p4 to register an existing .p4nexus index anyway.\n');
+    console.log('  Use --allow-non-p4 to register an existing index anyway.\n');
     process.exitCode = 1;
     return;
   }

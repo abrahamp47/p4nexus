@@ -1,11 +1,11 @@
 /**
- * Source-code regression: ENOBUFS on large git/rg output.
+ * Source-code regression: ENOBUFS on large p4/rg output.
  *
  * Node's default maxBuffer for execFileSync is 1 MB, which is easily exceeded
- * by `git diff` on repos with large unstaged changes (e.g. unignored build
+ * by `p4 diff -du` on repos with large pending changes (e.g. unignored build
  * folders) — see the original bug report:
  *
- *   "spawnSync git ENOBUFS in p4nexus_detect_changes(scope=\"unstaged\")
+ *   "spawnSync p4 ENOBUFS in p4nexus_detect_changes(scope=\"default\")
  *    due to missing maxBuffer".
  *
  * Every `execFileSync` call in `local-backend.ts` that captures stdout
