@@ -2060,7 +2060,19 @@ export class LocalBackend {
       return { error: `P4 diff failed: ${err.message}` };
     }
 
-    const fileDiffs: FileDiff[] = parseDiffHunks(diffOutput);
+    const rawDiffs: FileDiff[] = parseDiffHunks(diffOutput);
+
+    // Perforce diff returns absolute local paths; strip the repo root
+    // so filePath matches the relative paths stored in the graph.
+    const repoRoot = repo.repoPath.replace(/\\/g, '/').replace(/\/$/, '');
+    const fileDiffs = rawDiffs.map((fd) => {
+      let fp = fd.filePath.replace(/\\/g, '/');
+      const idx = fp.indexOf(repoRoot);
+      if (idx !== -1) {
+        fp = fp.slice(idx + repoRoot.length).replace(/^\//, '');
+      }
+      return { ...fd, filePath: fp };
+    });
 
     if (fileDiffs.length === 0) {
       return {
